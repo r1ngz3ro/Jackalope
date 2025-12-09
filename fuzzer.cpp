@@ -18,6 +18,7 @@ limitations under the License.
 
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 #include "common.h"
 #include "sample.h"
 #include "fuzzer.h"
@@ -29,6 +30,7 @@ limitations under the License.
 #include "directory.h"
 #include "client.h"
 #include "mersenne.h"
+#include "rangetracker.h"
 
 using namespace std;
 
@@ -112,6 +114,8 @@ void Fuzzer::ParseOptions(int argc, char **argv) {
   keep_samples_in_memory = GetBinaryOption("-keep_samples_in_memory", argc, argv, true);
 
   track_ranges = GetBinaryOption("-track_ranges", argc, argv, false);
+  track_zip_ranges = GetBinaryOption("-track_zip_ranges", argc, argv, false);
+  validate_zip_before_range_extraction = GetBinaryOption("-validate_zip_ranges", argc, argv, true);
 
   Sample::max_size = (size_t)GetIntOption("-max_sample_size", argc, argv, DEFAULT_MAX_SAMPLE_SIZE);
 
@@ -357,6 +361,10 @@ void Fuzzer::SaveSample(ThreadContext *tc, Sample *sample, uint32_t init_timeout
     if (result == OK) {
       tc->range_tracker->ExtractRanges(&ranges);
     }
+  } else if (track_zip_ranges) {
+    // Extract ranges from ZIP file content directly
+    ZIPRangeTracker zip_tracker;
+    zip_tracker.ExtractRanges(&ranges, sample->bytes, sample->size, validate_zip_before_range_extraction);
   }
 
   output_mutex.Lock();
@@ -712,7 +720,7 @@ void Fuzzer::FuzzJob(ThreadContext* tc, FuzzerJob* job) {
   
   tc->mutator->InitRound(entry->sample, entry->context);
 
-  if (track_ranges) tc->mutator->SetRanges(&entry->ranges);
+  if (track_ranges || track_zip_ranges) tc->mutator->SetRanges(&entry->ranges);
 
   printf("Fuzzing sample %05lld\n", entry->sample_index);
 
@@ -1037,9 +1045,16 @@ SampleDelivery *Fuzzer::CreateSampleDelivery(int argc, char **argv, ThreadContex
 }
 
 RangeTracker* Fuzzer::CreateRangeTracker(int argc, char** argv, ThreadContext* tc) {
-  if (!track_ranges) {
+  if (!track_ranges && !track_zip_ranges) {
     return new RangeTracker();
-  } else {
+  }
+
+  // If we're only doing ZIP range tracking, return a basic tracker
+  if (track_zip_ranges && !track_ranges) {
+    return new RangeTracker();
+  }
+
+  // For traditional range tracking, use SHM tracker
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
     string shm_name = string("shm_ranges_") + std::to_string(GetCurrentProcessId()) + "_" + std::to_string(tc->thread_id);
 #else
@@ -1048,7 +1063,6 @@ RangeTracker* Fuzzer::CreateRangeTracker(int argc, char** argv, ThreadContext* t
     ReplaceTargetCmdArg(tc, "@ranges@", shm_name);
 
     return new SHMRangeTracker((char*)shm_name.c_str(), RANGE_SHM_SIZE);
-  }
 }
 
 Minimizer* Fuzzer::CreateMinimizer(int argc, char** argv, ThreadContext* tc) {

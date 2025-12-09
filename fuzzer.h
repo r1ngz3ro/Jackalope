@@ -240,6 +240,8 @@ protected:
   bool keep_samples_in_memory;
 
   bool track_ranges;
+  bool track_zip_ranges;
+  bool validate_zip_before_range_extraction;
 
   int coverage_reproduce_retries;
   int crash_reproduce_retries;

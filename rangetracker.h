@@ -60,3 +60,14 @@ protected:
   uint32_t* data;
   size_t max_ranges;
 };
+
+class ZIPRangeTracker : public RangeTracker {
+public:
+  ZIPRangeTracker() {}
+
+  // Extract ranges from sample data directly
+  void ExtractRanges(std::vector<Range>* ranges, const char* sample_data, size_t sample_size, bool validate_zip = true);
+
+  // Override base class method
+  virtual void ExtractRanges(std::vector<Range>* ranges) override {}
+};

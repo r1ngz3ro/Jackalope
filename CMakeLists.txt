@@ -1,11 +1,11 @@
 # Copyright 2020 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +28,7 @@ elseif(ANDROID_ABI)
   endif()
   if(${ANDROID_TARGET} MATCHES "VM")
     add_definitions(-DANDROID_VM)
-  endif()  
+  endif()
 elseif(NOT DEFINED ${ARCHITECTURE})
   EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
   if(${ARCHITECTURE} MATCHES arm64)
@@ -98,7 +98,7 @@ add_library(fuzzerlib STATIC
   mutators/grammar/grammarminimizer.cpp
   ${platform_specific_sources}
   )
-  
+
 if(LINUX)
   target_link_libraries(fuzzerlib rt)
   target_link_libraries(fuzzerlib pthread)
@@ -120,7 +120,7 @@ target_link_libraries(fuzzer fuzzerlib)
 add_executable(test
   test.cpp
   )
-  
+
 if(LINUX)
   target_link_libraries(test rt)
 endif()
@@ -142,4 +142,3 @@ if(LINUX)
 endif()
 
 add_subdirectory(examples)
-
